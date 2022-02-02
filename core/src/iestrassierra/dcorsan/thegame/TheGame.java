@@ -3,6 +3,7 @@ package iestrassierra.dcorsan.thegame;
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.GL20;
+import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.maps.tiled.TiledMap;
@@ -10,12 +11,12 @@ import com.badlogic.gdx.maps.tiled.TiledMapRenderer;
 import com.badlogic.gdx.maps.tiled.TiledMapTileLayer;
 import com.badlogic.gdx.maps.tiled.TmxMapLoader;
 import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer;
+import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.utils.ScreenUtils;
 
 public class TheGame extends ApplicationAdapter {
 	SpriteBatch batch;
-	Texture img;
 	//Objeto que recoge el mapa de baldosas
 	private TiledMap mapa;
 
@@ -32,7 +33,7 @@ public class TheGame extends ApplicationAdapter {
 	private boolean[][] obstaculo, tesoro;
 
 	//Objeto con el que se pinta el mapa de baldosas
-	private TiledMapRenderer mapaRenderer;
+	private TiledMapRenderer mapRenderer;
 
 	//Variables de ancho y alto
 	int anchoMapa, altoMapa, anchoCelda, altoCelda;
@@ -40,14 +41,21 @@ public class TheGame extends ApplicationAdapter {
 	//Variable para contabilizar el número de tesoros
 	int totalTesoros;
 
+	// Cámara que nos da la vista del juego
+	private OrthographicCamera camara;
+	
+	private int anchuraPantalla;
+	private int alturaPantalla;
+
+	private Vector2 posicionJugador;
 
 	@Override
 	public void create () {
 		batch = new SpriteBatch();
 
 		//Cargamos el mapa de baldosas desde la carpeta de assets
-		mapa = new TmxMapLoader().load("map/TreasureMap.tmx");
-		mapaRenderer = new OrthogonalTiledMapRenderer(mapa);
+		mapa = new TmxMapLoader().load("themap.tmx");
+		mapRenderer = new OrthogonalTiledMapRenderer(mapa);
 
 		//Determinamos el alto y ancho del mapa de baldosas. Para ello necesitamos extraer la capa
 		//base del mapa y, a partir de ella, determinamos el número de celdas a lo ancho y alto,
@@ -65,9 +73,9 @@ public class TheGame extends ApplicationAdapter {
 
 		//Cargamos las capas de los obstáculos y las de los pasos en el TiledMap.
 		TiledMapTileLayer capaSuelo = (TiledMapTileLayer) mapa.getLayers().get(0);
-		TiledMapTileLayer capaObstaculos = (TiledMapTileLayer) mapa.getLayers().get(1);
-		TiledMapTileLayer capaPasos = (TiledMapTileLayer) mapa.getLayers().get(2);
-		capaTesoros = (TiledMapTileLayer) mapa.getLayers().get(3);
+		TiledMapTileLayer capaObstaculos = (TiledMapTileLayer) mapa.getLayers().get(2);
+		TiledMapTileLayer capaPasos = (TiledMapTileLayer) mapa.getLayers().get(4);
+		capaTesoros = (TiledMapTileLayer) mapa.getLayers().get(1);
 		TiledMapTileLayer capaProfundidad = (TiledMapTileLayer) mapa.getLayers().get(4);
 
 		//El numero de tiles es igual en todas las capas. Lo tomamos de la capa Suelo
@@ -94,25 +102,49 @@ public class TheGame extends ApplicationAdapter {
 		//Posiciones inicial y final del recorrido
 		Vector2 celdaInicial = new Vector2(0, 0);
 		celdaFinal = new Vector2(24, 1);
+
+		//Inicializamos la cámara del juego
+		anchuraPantalla = Gdx.graphics.getWidth();
+		alturaPantalla = Gdx.graphics.getHeight();
+
+		//Creamos una cámara que mostrará una zona del mapa (igual en todas las plataformas)
+		int anchoCamara = 400, altoCamara = 240;
+		camara = new OrthographicCamera(anchoCamara, altoCamara);
+
+		//Actualizamos la posición de la cámara
+		camara.update();
+
+		posicionJugador = new Vector2(posicionaMapa(celdaInicial));
 	}
 
 	@Override
 	public void render () {
-		ScreenUtils.clear(1, 0, 0, 1);
-		batch.begin();
-		batch.draw(img, 0, 0);
-		batch.end();
-
 		//Para borrar la pantalla
 		Gdx.gl.glClearColor(0.0f, 0.0f, 0.0f, 1);
 		Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
 		//Vinculamos el objeto que dibuja el mapa con la cámara del juego
-		// mapaRenderer.setView(camara);
+		mapRenderer.setView(camara);
 
 		//Dibujamos las capas del mapa
 		//Posteriormente quitaremos la capa de profundidad para intercalar a los personajes
-		int[] capas = {0, 1, 2, 3, 4};
-		mapaRenderer.render(capas);
+		int[] capas = {0, 1, 2, 3, 4, 5};
+		mapRenderer.render(capas);
+
+		//Centramos la camara en el jugador principal
+		camara.position.set(posicionJugador, 0);
+
+		//Comprobamos que la cámara no se salga de los límites del mapa de baldosas con el método MathUtils.clamp
+		camara.position.x = MathUtils.clamp(camara.position.x,
+				camara.viewportWidth / 2f,
+				anchoMapa - camara.viewportWidth / 2f);
+		camara.position.y = MathUtils.clamp(camara.position.y,
+				camara.viewportHeight / 2f,
+				altoMapa - camara.viewportHeight / 2f);
+
+		//Actualizamos la cámara del juego
+		camara.update();
+		//Vinculamos el objeto que dibuja el mapa con la cámara del juego
+		mapRenderer.setView(camara);
 	}
 	
 	@Override
@@ -120,5 +152,16 @@ public class TheGame extends ApplicationAdapter {
 		batch.dispose();
 		//TiledMap
 		mapa.dispose();
+	}
+
+	private Vector2 posicionaMapa(Vector2 celda) {
+		Vector2 res = new Vector2();
+		if (celda.x + 1 > anchoTiles ||
+				celda.y + 1 > altoTiles) {  //Si la peticion esta mal, situamos en el origen del mapa
+			res.set(0, 0);
+		}
+		res.x = celda.x * anchoCelda;
+		res.y = (altoTiles - 1 - celda.y) * altoCelda;
+		return res;
 	}
 }
