@@ -2,6 +2,8 @@ package iestrassierra.dcorsan.thegame;
 
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
+import com.badlogic.gdx.InputProcessor;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
@@ -15,9 +17,10 @@ import com.badlogic.gdx.maps.tiled.TmxMapLoader;
 import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer;
 import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
+import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.ScreenUtils;
 
-public class TheGame extends ApplicationAdapter {
+public class TheGame extends ApplicationAdapter implements InputProcessor {
 	SpriteBatch batch;
 	//Objeto que recoge el mapa de baldosas
 	private TiledMap mapa;
@@ -111,7 +114,7 @@ public class TheGame extends ApplicationAdapter {
 		TiledMapTileLayer capaObstaculos = (TiledMapTileLayer) mapa.getLayers().get(2);
 		TiledMapTileLayer capaPasos = (TiledMapTileLayer) mapa.getLayers().get(4);
 		capaTesoros = (TiledMapTileLayer) mapa.getLayers().get(1);
-		TiledMapTileLayer capaProfundidad = (TiledMapTileLayer) mapa.getLayers().get(4);
+		TiledMapTileLayer capaProfundidad = (TiledMapTileLayer) mapa.getLayers().get(5);
 
 		//El numero de tiles es igual en todas las capas. Lo tomamos de la capa Suelo
 		anchoTiles = capaSuelo.getWidth();
@@ -145,12 +148,10 @@ public class TheGame extends ApplicationAdapter {
 		//Actualizamos la posición de la cámara
 		camara.update();
 
-		posicionJugador = new Vector2(posicionaMapa(celdaInicial));
-
 		//Ponemos a cero el atributo stateTime, que marca el tiempo de ejecución de la animación del personaje principal
 		stateTime = 0f;
 		//Cargamos la imagen del personaje principal en el objeto img de la clase Texture
-		imagenPrincipal = new Texture(Gdx.files.internal("ruta_dentro_de_la_carpeta_assets/pc.png"));
+		imagenPrincipal = new Texture(Gdx.files.internal("character.png"));
 
 		//Sacamos los frames de img en un array bidimensional de TextureRegion
 		TextureRegion[][] tmp = TextureRegion.split(imagenPrincipal, imagenPrincipal.getWidth() / FRAME_COLS, imagenPrincipal.getHeight() / FRAME_ROWS);
@@ -158,6 +159,8 @@ public class TheGame extends ApplicationAdapter {
 		//Tile Inicial y Final
 		celdaInicial = new Vector2(0, 0);
 		celdaFinal = new Vector2(24, 1);
+
+		posicionJugador = new Vector2(posicionaMapa(celdaInicial));
 
 		//Creamos las distintas animaciones en bucle, teniendo en cuenta que el timepo entre frames será 150 milisegundos
 
@@ -182,11 +185,14 @@ public class TheGame extends ApplicationAdapter {
 		cuentaTesoros = 0;
 
 		//Velocidad del jugador (puede hacerse un menú de configuración para cambiar la dificultad del juego)
-		velocidadJugador = 0.75f;
+		velocidadJugador = 2.5f;
 	}
 
 	@Override
 	public void render () {
+		//ponemos a la escucha de eventos la propia clase del juego
+		Gdx.input.setInputProcessor(this);
+
 		//Para borrar la pantalla
 		Gdx.gl.glClearColor(0.0f, 0.0f, 0.0f, 1);
 		Gdx.gl.glClear(GL20.GL_COLOR_BUFFER_BIT);
@@ -234,7 +240,7 @@ public class TheGame extends ApplicationAdapter {
 
 		//Pintamos la capa de profundidad del mapa de baldosas.
 		capas = new int[1];
-		capas[0] = 4; //Número de la capa de profundidad
+		capas[0] = 5; //Número de la capa de profundidad
 		mapRenderer.render(capas);
 	}
 	
@@ -345,5 +351,104 @@ public class TheGame extends ApplicationAdapter {
 	private void setAbajo(boolean abj) {
 		if (arriba && abj) arriba = false;
 		abajo = abj;
+	}
+
+	@Override
+	public boolean keyDown(int keycode) {
+		switch (keycode) {
+			case Input.Keys.LEFT:
+				setIzquierda(true);
+				break;
+			case Input.Keys.RIGHT:
+				setDerecha(true);
+				break;
+			case Input.Keys.UP:
+				setArriba(true);
+				break;
+			case Input.Keys.DOWN:
+				setAbajo(true);
+				break;
+		}
+		return true;
+	}
+
+	@Override
+	public boolean keyUp(int keycode) {
+		switch (keycode) {
+			case Input.Keys.LEFT:
+				setIzquierda(false);
+				break;
+			case Input.Keys.RIGHT:
+				setDerecha(false);
+				break;
+			case Input.Keys.UP:
+				setArriba(false);
+				break;
+			case Input.Keys.DOWN:
+				setAbajo(false);
+				break;
+		}
+
+		//Para ocultar/mostrar las distintas capas pulsamos desde el 1 en adelante...
+		int codigoCapa = keycode - Input.Keys.NUM_1;
+		if (codigoCapa <= mapa.getLayers().getCount())
+			mapa.getLayers().get(codigoCapa).setVisible(!mapa.getLayers().get(codigoCapa).isVisible());
+
+		return true;
+	}
+
+	@Override
+	public boolean keyTyped(char character) {
+		return false;
+	}
+
+	@Override
+	public boolean touchDown(int screenX, int screenY, int pointer, int button) {
+		Vector3 clickCoordinates = new Vector3(screenX, screenY, 0f);
+		//Transformamos las coordenadas del vector a coordenadas de nuestra camara
+		Vector3 pulsacion3d = camara.unproject(clickCoordinates);
+		Vector2 pulsacion = new Vector2(pulsacion3d.x, pulsacion3d.y);
+
+		//Calculamos la diferencia entre la pulsacion y el centro del jugador
+		Vector2 centroJugador = new Vector2(posicionJugador).add((float) anchoJugador / 2, (float) altoJugador / 2);
+		Vector2 diferencia = new Vector2(pulsacion.sub(centroJugador));
+
+		//Vamos a determinar la intencion del usuario para mover al personaje en funcion del
+		//angulo entre la pulsacion y la posicion del jugador
+		float angulo = diferencia.angleDeg();
+
+		if (angulo > 30 && angulo <= 150) setArriba(true);
+		if (angulo > 120 && angulo <= 240) setIzquierda(true);
+		if (angulo > 210 && angulo <= 330) setAbajo(true);
+		if ((angulo > 0 && angulo <= 60) || (angulo > 300 && angulo < 360)) setDerecha(true);
+
+		return true;
+	}
+
+	@Override
+	public boolean touchUp(int screenX, int screenY, int pointer, int button) {
+		setArriba(false);
+		setAbajo(false);
+		setIzquierda(false);
+		setDerecha(false);
+
+		return true;
+	}
+
+	@Override
+	public boolean touchDragged(int screenX, int screenY, int pointer) {
+		//mismo caso que touchDown
+		touchDown(screenX,screenY,pointer,0);
+		return true;
+	}
+
+	@Override
+	public boolean mouseMoved(int screenX, int screenY) {
+		return false;
+	}
+
+	@Override
+	public boolean scrolled(float amountX, float amountY) {
+		return false;
 	}
 }
