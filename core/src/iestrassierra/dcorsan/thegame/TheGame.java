@@ -314,6 +314,26 @@ public class TheGame extends ApplicationAdapter implements InputProcessor {
 			}
 			//Código del final del juego
 		}
+
+		//Deteccion de tesoros: calculamos la celda en la que se encuentran los límites de la zona de contacto.
+		int limIzq = (int) ((posicionJugador.x + 0.25 * anchoJugador) / anchoCelda);
+		int limDrcha = (int) ((posicionJugador.x + 0.75 * anchoJugador) / anchoCelda);
+		int limSup = (int) ((posicionJugador.y + 0.25 * altoJugador) / altoCelda);
+		int limInf = (int) ((posicionJugador.y) / altoCelda);
+
+		//Límite inferior izquierdo
+		if (tesoro[limIzq][limInf]) {
+			TiledMapTileLayer.Cell celda = capaTesoros.getCell(limIzq, limInf);
+			celda.setTile(null);
+			tesoro[limIzq][limInf] = false;
+			cuentaTesoros++;
+		} //Límite superior derecho
+		else if (tesoro[limDrcha][limSup]) {
+			TiledMapTileLayer.Cell celda = capaTesoros.getCell(limDrcha, limSup);
+			celda.setTile(null);
+			tesoro[limDrcha][limSup] = false;
+			cuentaTesoros++;
+		}
 	}
 
 	//Metodo que detecta si hay un obstaculo en una determinada posicion
