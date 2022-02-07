@@ -151,7 +151,7 @@ public class TheGame extends ApplicationAdapter implements InputProcessor {
 		//Ponemos a cero el atributo stateTime, que marca el tiempo de ejecución de la animación del personaje principal
 		stateTime = 0f;
 		//Cargamos la imagen del personaje principal en el objeto img de la clase Texture
-		imagenPrincipal = new Texture(Gdx.files.internal("character.png"));
+		imagenPrincipal = new Texture(Gdx.files.internal("characters/player/character.png"));
 
 		//Sacamos los frames de img en un array bidimensional de TextureRegion
 		TextureRegion[][] tmp = TextureRegion.split(imagenPrincipal, imagenPrincipal.getWidth() / FRAME_COLS, imagenPrincipal.getHeight() / FRAME_ROWS);
