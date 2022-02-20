@@ -16,6 +16,7 @@ import com.badlogic.gdx.maps.tiled.TiledMapTileLayer;
 import com.badlogic.gdx.maps.tiled.TmxMapLoader;
 import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer;
 import com.badlogic.gdx.math.MathUtils;
+import com.badlogic.gdx.math.Rectangle;
 import com.badlogic.gdx.math.Vector2;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.ScreenUtils;
@@ -38,7 +39,7 @@ public class TheGame extends ApplicationAdapter implements InputProcessor {
 	private TiledMapRenderer mapRenderer;
 
 	//Variables de ancho y alto
-	int anchoMapa, altoMapa, anchoCelda, altoCelda;
+	public static int anchoMapa, altoMapa, anchoCelda, altoCelda;
 
 	//Variable para contabilizar el número de tesoros
 	int totalTesoros;
@@ -57,12 +58,11 @@ public class TheGame extends ApplicationAdapter implements InputProcessor {
 	private static boolean izquierda, derecha, arriba, abajo;
 
 	//Dimensiones del sprite
-	private int anchoJugador;
-	private int altoJugador;
+	public static int anchoJugador, altoJugador;
 
 	//Constantes que indican el numero de filas y columnas de la hoja de sprites
-	private static final int FRAME_COLS = 3;
-	private static final int FRAME_ROWS = 4;
+	public static final int FRAME_COLS = 3;
+	public static final int FRAME_ROWS = 4;
 
 	// Atributo en el que se cargará la imagen del personaje principal.
 	private Texture imagenPrincipal;
@@ -84,6 +84,8 @@ public class TheGame extends ApplicationAdapter implements InputProcessor {
 
 	//Celdas inicial y final del recorrido del personaje principal
 	private Vector2 celdaInicial, celdaFinal;
+
+	Enemy[] enemies = new Enemy[Enemy.amount];
 
 	private int cuentaTesoros;
 
@@ -186,6 +188,33 @@ public class TheGame extends ApplicationAdapter implements InputProcessor {
 
 		//Velocidad del jugador (puede hacerse un menú de configuración para cambiar la dificultad del juego)
 		velocidadJugador = 2.5f;
+
+
+		enemies[0] = new Enemy(
+				new Texture(Gdx.files.internal("characters/enemy/female_16-1.png")),
+				posicionaMapa(new Vector2(3,2)),
+				posicionaMapa(new Vector2(3,5))
+		);
+		enemies[1] = new Enemy(
+				new Texture(Gdx.files.internal("characters/enemy/enemy_18.png")),
+				posicionaMapa(new Vector2(6,2)),
+				posicionaMapa(new Vector2(6,5))
+		);
+		enemies[2] = new Enemy(
+				new Texture(Gdx.files.internal("characters/enemy/enemy_19.png")),
+				posicionaMapa(new Vector2(9,2)),
+				posicionaMapa(new Vector2(9,5))
+		);
+		enemies[3] = new Enemy(
+				new Texture(Gdx.files.internal("characters/enemy/dog_01-2r.png")),
+				posicionaMapa(new Vector2(12,2)),
+				posicionaMapa(new Vector2(12,5))
+		);
+		enemies[4] = new Enemy(
+				new Texture(Gdx.files.internal("characters/enemy/pien.png")),
+				posicionaMapa(new Vector2(15,2)),
+				posicionaMapa(new Vector2(15,5))
+		);
 	}
 
 	@Override
@@ -235,6 +264,17 @@ public class TheGame extends ApplicationAdapter implements InputProcessor {
 		TextureRegion cuadroActual = jugador.getKeyFrame(stateTime);
 		batch.draw(cuadroActual, posicionJugador.x, posicionJugador.y);
 
+		//Deteccion de colisiones con NPC
+		detectaColisiones();
+
+
+		for (Enemy enemy : enemies) {
+			enemy.move();
+			cuadroActual = (TextureRegion) enemy.getActive().getKeyFrame(Enemy.stateTime);
+			batch.draw(cuadroActual, enemy.getPosition().x, enemy.getPosition().y);
+		}
+
+
 		//Finalizamos el objeto SpriteBatch
 		batch.end();
 
@@ -251,6 +291,10 @@ public class TheGame extends ApplicationAdapter implements InputProcessor {
 		//SpriteBatch
 		if (batch.isDrawing())
 			batch.dispose();
+
+		for (Enemy enemy : enemies) {
+			enemy.getImg().dispose();
+		}
 	}
 
 	private Vector2 posicionaMapa(Vector2 celda) {
@@ -333,6 +377,26 @@ public class TheGame extends ApplicationAdapter implements InputProcessor {
 			celda.setTile(null);
 			tesoro[limDrcha][limSup] = false;
 			cuentaTesoros++;
+		}
+	}
+
+	private void detectaColisiones() {
+		//Vamos a comprobar que el rectángulo de contacto del jugador
+		//no se solape con el rectángulo de contacto del npc
+		Rectangle rJugador = new Rectangle((float) (posicionJugador.x + 0.25 * anchoJugador), (float) (posicionJugador.y + 0.25 * altoJugador),
+				(float) (0.5 * anchoJugador), (float) (0.5 * altoJugador));
+		Rectangle rNPC;
+		//Ahora recorremos el array de NPC, para cada uno generamos su rectángulo de contacto
+		for (Enemy enemy : enemies) {
+			rNPC = new Rectangle((float) (enemy.getPosition().x + 0.1 * anchoJugador), (float) (enemy.getPosition().y + 0.1 * altoJugador),
+					(float) (0.8 * anchoJugador), (float) (0.8 * altoJugador));
+			//Si hay colision
+			if (rJugador.overlaps(rNPC)) {
+				//Código de fin de partida
+				System.out.println("Fin de la partida");
+				posicionJugador.set(posicionaMapa(celdaInicial));
+				return; //Acabamos el bucle si hay una sola colisión
+			}
 		}
 	}
 
