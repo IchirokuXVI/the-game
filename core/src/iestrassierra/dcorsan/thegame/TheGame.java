@@ -270,7 +270,7 @@ public class TheGame extends ApplicationAdapter implements InputProcessor {
 
 		for (Enemy enemy : enemies) {
 			enemy.move();
-			cuadroActual = (TextureRegion) enemy.getActive().getKeyFrame(Enemy.stateTime);
+			cuadroActual = (TextureRegion) enemy.getActive().getKeyFrame(enemy.getStateTime());
 			batch.draw(cuadroActual, enemy.getPosition().x, enemy.getPosition().y);
 		}
 
@@ -314,24 +314,28 @@ public class TheGame extends ApplicationAdapter implements InputProcessor {
 		Vector2 posicionAnterior = new Vector2();
 		posicionAnterior.set(posicionJugador);
 
+		float velocidad;
 		//Los booleanos izquierda, derecha, arriba y abajo recogen la dirección del personaje,
 		//para permitir direcciones oblícuas no deben ser excluyentes.
 		//Pero sí debemos excluir la simultaneidad entre arriba/abajo e izquierda/derecha
 		//para no tener direcciones contradictorias
+
+		velocidad = (arriba || abajo) && (derecha || izquierda) ? velocidadJugador / 2 : velocidadJugador;
+
 		if (izquierda) {
-			posicionJugador.x -= velocidadJugador;
+			posicionJugador.x -= velocidad;
 			jugador = jugadorIzquierda;
 		}
 		if (derecha) {
-			posicionJugador.x += velocidadJugador;
+			posicionJugador.x += velocidad;
 			jugador = jugadorDerecha;
 		}
 		if (arriba) {
-			posicionJugador.y += velocidadJugador;
+			posicionJugador.y += velocidad;
 			jugador = jugadorArriba;
 		}
 		if (abajo) {
-			posicionJugador.y -= velocidadJugador;
+			posicionJugador.y -= velocidad;
 			jugador = jugadorAbajo;
 		}
 

@@ -1,5 +1,6 @@
 package iestrassierra.dcorsan.thegame;
 
+import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Animation;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
@@ -7,12 +8,14 @@ import com.badlogic.gdx.math.MathUtils;
 import com.badlogic.gdx.math.Vector2;
 
 public class Enemy {
-    public static float stateTime = 0.75f;
+
     public static int amount = 5;
     public static float speed = 1f;
     public static float animationDuration = 0.15f;
 
     private Texture img;
+
+    public float stateTime = 0f;
 
     private Animation top;
     private Animation right;
@@ -112,6 +115,8 @@ public class Enemy {
             destination.set(source);
             source.set(position);
         }
+
+        stateTime += Gdx.graphics.getDeltaTime();
     }
 
     public Texture getImg() {
@@ -120,6 +125,14 @@ public class Enemy {
 
     public void setImg(Texture img) {
         this.img = img;
+    }
+
+    public float getStateTime() {
+        return stateTime;
+    }
+
+    public void setStateTime(float stateTime) {
+        this.stateTime = stateTime;
     }
 
     public Animation getTop() {
