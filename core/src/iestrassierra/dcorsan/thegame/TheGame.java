@@ -4,14 +4,18 @@ import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.Input;
 import com.badlogic.gdx.InputProcessor;
+import com.badlogic.gdx.audio.Music;
+import com.badlogic.gdx.audio.Sound;
 import com.badlogic.gdx.graphics.GL20;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.Animation;
+import com.badlogic.gdx.graphics.g2d.BitmapFont;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.g2d.TextureRegion;
 import com.badlogic.gdx.maps.tiled.TiledMap;
 import com.badlogic.gdx.maps.tiled.TiledMapRenderer;
+import com.badlogic.gdx.maps.tiled.TiledMapTile;
 import com.badlogic.gdx.maps.tiled.TiledMapTileLayer;
 import com.badlogic.gdx.maps.tiled.TmxMapLoader;
 import com.badlogic.gdx.maps.tiled.renderers.OrthogonalTiledMapRenderer;
@@ -88,6 +92,25 @@ public class TheGame extends ApplicationAdapter implements InputProcessor {
 	Enemy[] enemies = new Enemy[Enemy.amount];
 
 	private int cuentaTesoros;
+	private TiledMapTile tileTesoro;
+
+	// La música se va reproduciendo poco a poco (sin cargarla en memoria)
+	private Music musicaJuego;
+
+	// Los sonidos deben ser de máximo 1 MB y son cargados en memoria
+	private Sound tesoroEncontrado;
+	private Sound pillado;
+	private Sound fracaso;
+	private Sound exito;
+
+	private Sound pasos;
+	private int cycle, cycle_ant;
+
+	//Elementos para sobreimpresionar informacion
+	private BitmapFont fontVidas;
+	private BitmapFont fontTesoros;
+	//Numero de vidas del jugador
+	private int nVidas;
 
 	@Override
 	public void create () {
@@ -135,7 +158,10 @@ public class TheGame extends ApplicationAdapter implements InputProcessor {
 				//rellenamos el array bidimensional de los tesoros
 				tesoro[x][y] = (capaTesoros.getCell(x, y) != null);
 				//contabilizamos cuántos tesoros se han incluido en el mapa
-				if (tesoro[x][y]) totalTesoros++;
+				if (tesoro[x][y]) {
+					totalTesoros++;
+					tileTesoro = capaTesoros.getCell(x, y).getTile();
+				}
 			}
 		}
 
@@ -160,7 +186,7 @@ public class TheGame extends ApplicationAdapter implements InputProcessor {
 
 		//Tile Inicial y Final
 		celdaInicial = new Vector2(0, 0);
-		celdaFinal = new Vector2(24, 1);
+		celdaFinal = new Vector2(10, 6);
 
 		posicionJugador = new Vector2(posicionaMapa(celdaInicial));
 
@@ -192,33 +218,61 @@ public class TheGame extends ApplicationAdapter implements InputProcessor {
 
 		enemies[0] = new Enemy(
 				new Texture(Gdx.files.internal("characters/enemy/female_16-1.png")),
-				posicionaMapa(new Vector2(3,2)),
-				posicionaMapa(new Vector2(3,5))
+				posicionaMapa(new Vector2(1,2)),
+				posicionaMapa(new Vector2(8,2))
 		);
 		enemies[1] = new Enemy(
 				new Texture(Gdx.files.internal("characters/enemy/enemy_18.png")),
-				posicionaMapa(new Vector2(6,2)),
-				posicionaMapa(new Vector2(6,5))
+				posicionaMapa(new Vector2(6,3)),
+				posicionaMapa(new Vector2(6,6))
 		);
+		enemies[1].setSpeed(1.5f);
 		enemies[2] = new Enemy(
 				new Texture(Gdx.files.internal("characters/enemy/enemy_19.png")),
 				posicionaMapa(new Vector2(9,2)),
-				posicionaMapa(new Vector2(9,5))
+				posicionaMapa(new Vector2(9,6))
 		);
 		enemies[3] = new Enemy(
 				new Texture(Gdx.files.internal("characters/enemy/dog_01-2r.png")),
-				posicionaMapa(new Vector2(12,2)),
-				posicionaMapa(new Vector2(12,5))
+				posicionaMapa(new Vector2(12,0)),
+				posicionaMapa(new Vector2(12,3))
 		);
 		enemies[4] = new Enemy(
 				new Texture(Gdx.files.internal("characters/enemy/pien.png")),
-				posicionaMapa(new Vector2(15,2)),
-				posicionaMapa(new Vector2(15,5))
+				posicionaMapa(new Vector2(5,7)),
+				posicionaMapa(new Vector2(5,8))
 		);
+		enemies[4].setSpeed(0.25f);
+
+		//Inicializamos la musica de fondo del juego
+		musicaJuego = Gdx.audio.newMusic(Gdx.files.internal("sound/background.mp3"));
+		musicaJuego.setLooping(true);
+		musicaJuego.setVolume(0.4f);
+
+		//Inicializamos los sonidos
+		tesoroEncontrado = Gdx.audio.newSound(Gdx.files.internal("sound/pickup.mp3"));
+		pillado = Gdx.audio.newSound(Gdx.files.internal("sound/death.mp3"));
+		fracaso = Gdx.audio.newSound(Gdx.files.internal("sound/lose.mp3"));
+		exito = Gdx.audio.newSound(Gdx.files.internal("sound/victory.mp3"));
+
+		//Sonido de pasos
+		pasos = Gdx.audio.newSound(Gdx.files.internal("sound/steps.mp3"));
+		cycle = 0;
+		cycle_ant = 0;//Sirven para controlar los ciclos de reproduccion del sonido pasos
+
+		//Textos sobreimpresionados
+		fontVidas = new BitmapFont();
+		fontTesoros = new BitmapFont();
+
+		nVidas = 3;
 	}
 
 	@Override
 	public void render () {
+		//Reproducimos la musica del juego
+		if (!musicaJuego.isPlaying())
+			musicaJuego.play();
+
 		//ponemos a la escucha de eventos la propia clase del juego
 		Gdx.input.setInputProcessor(this);
 
@@ -260,28 +314,30 @@ public class TheGame extends ApplicationAdapter implements InputProcessor {
 		//Inicializamos el objeto SpriteBatch
 		batch.begin();
 
-		//cuadroActual contendrá el frame que se va a mostrar en cada momento.
-		TextureRegion cuadroActual = jugador.getKeyFrame(stateTime);
-		batch.draw(cuadroActual, posicionJugador.x, posicionJugador.y);
+		batch.draw(jugador.getKeyFrame(stateTime), posicionJugador.x, posicionJugador.y);
 
 		//Deteccion de colisiones con NPC
 		detectaColisiones();
 
-
 		for (Enemy enemy : enemies) {
 			enemy.move();
-			cuadroActual = (TextureRegion) enemy.getActive().getKeyFrame(enemy.getStateTime());
-			batch.draw(cuadroActual, enemy.getPosition().x, enemy.getPosition().y);
+			batch.draw(enemy.getActive().getKeyFrame(enemy.getStateTime()), enemy.getPosition().x, enemy.getPosition().y);
 		}
 
+		batch.end();
+
+		String infoTesoros = "Tesoros: " + cuentaTesoros;
+		String infoVidas = "Vidas: " + nVidas;
+
+		batch.begin();
+		//Pintamos la capa de profundidad del mapa de baldosas.
+		mapRenderer.render(new int[] { 5 });
+
+		fontTesoros.draw(batch, infoTesoros, camara.position.x - camara.viewportWidth / 2, camara.position.y - camara.viewportHeight / 2 + 60);
+		fontVidas.draw(batch, infoVidas, camara.position.x - camara.viewportWidth / 2, camara.position.y - camara.viewportHeight / 2 + 30);
 
 		//Finalizamos el objeto SpriteBatch
 		batch.end();
-
-		//Pintamos la capa de profundidad del mapa de baldosas.
-		capas = new int[1];
-		capas[0] = 5; //Número de la capa de profundidad
-		mapRenderer.render(capas);
 	}
 	
 	@Override
@@ -295,6 +351,18 @@ public class TheGame extends ApplicationAdapter implements InputProcessor {
 		for (Enemy enemy : enemies) {
 			enemy.getImg().dispose();
 		}
+
+		//Music
+		musicaJuego.dispose();
+
+		//Sound
+		tesoroEncontrado.dispose();
+		pillado.dispose();
+		exito.dispose();
+		fracaso.dispose();
+
+		fontVidas.dispose();
+		fontTesoros.dispose();
 	}
 
 	private Vector2 posicionaMapa(Vector2 celda) {
@@ -309,7 +377,6 @@ public class TheGame extends ApplicationAdapter implements InputProcessor {
 	}
 
 	private void actualizaPosicionJugador() {
-
 		//Guardamos la posicion del jugador por si encontramos algun obstaculo
 		Vector2 posicionAnterior = new Vector2();
 		posicionAnterior.set(posicionJugador);
@@ -320,7 +387,9 @@ public class TheGame extends ApplicationAdapter implements InputProcessor {
 		//Pero sí debemos excluir la simultaneidad entre arriba/abajo e izquierda/derecha
 		//para no tener direcciones contradictorias
 
-		velocidad = (arriba || abajo) && (derecha || izquierda) ? velocidadJugador / 2 : velocidadJugador;
+		// velocidad = (arriba || abajo) && (derecha || izquierda) ? velocidadJugador / 2 : velocidadJugador;
+
+		velocidad = velocidadJugador;
 
 		if (izquierda) {
 			posicionJugador.x -= velocidad;
@@ -341,7 +410,12 @@ public class TheGame extends ApplicationAdapter implements InputProcessor {
 
 		//Avanzamos el stateTime del jugador principal cuando hay algún estado de movimiento activo
 		if (izquierda || derecha || arriba || abajo) {
+			//Control del sonido de los pasos del jugador
 			stateTime += Gdx.graphics.getDeltaTime();
+			cycle = (int) (stateTime / 0.2f);
+			if (cycle != cycle_ant)
+				pasos.play(0.4f);
+			cycle_ant = cycle;
 		}
 
 		//Limites en el mapa para el jugador
@@ -354,13 +428,14 @@ public class TheGame extends ApplicationAdapter implements InputProcessor {
 
 		//Deteccion de fin del mapa
 		if (celdaActual(posicionJugador).epsilonEquals(celdaFinal)) {
-			//Paralizamos el juego 1 segundo para reproducir algún efecto sonoro
+			exito.play();
 			try {
 				Thread.sleep(1000);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
-			//Código del final del juego
+
+			restartGame();
 		}
 
 		//Deteccion de tesoros: calculamos la celda en la que se encuentran los límites de la zona de contacto.
@@ -369,17 +444,17 @@ public class TheGame extends ApplicationAdapter implements InputProcessor {
 		int limSup = (int) ((posicionJugador.y + 0.25 * altoJugador) / altoCelda);
 		int limInf = (int) ((posicionJugador.y) / altoCelda);
 
-		//Límite inferior izquierdo
-		if (tesoro[limIzq][limInf]) {
-			TiledMapTileLayer.Cell celda = capaTesoros.getCell(limIzq, limInf);
+		if (tesoro[limIzq][limInf] || tesoro[limDrcha][limSup]) {
+			TiledMapTileLayer.Cell celda;
+			if (tesoro[limIzq][limInf]) {
+				celda = capaTesoros.getCell(limIzq, limInf);
+				tesoro[limIzq][limInf] = false;
+			} else {
+				celda = capaTesoros.getCell(limDrcha, limSup);
+				tesoro[limDrcha][limSup] = false;
+			}
 			celda.setTile(null);
-			tesoro[limIzq][limInf] = false;
-			cuentaTesoros++;
-		} //Límite superior derecho
-		else if (tesoro[limDrcha][limSup]) {
-			TiledMapTileLayer.Cell celda = capaTesoros.getCell(limDrcha, limSup);
-			celda.setTile(null);
-			tesoro[limDrcha][limSup] = false;
+			tesoroEncontrado.play();
 			cuentaTesoros++;
 		}
 	}
@@ -387,17 +462,42 @@ public class TheGame extends ApplicationAdapter implements InputProcessor {
 	private void detectaColisiones() {
 		//Vamos a comprobar que el rectángulo de contacto del jugador
 		//no se solape con el rectángulo de contacto del npc
-		Rectangle rJugador = new Rectangle((float) (posicionJugador.x + 0.25 * anchoJugador), (float) (posicionJugador.y + 0.25 * altoJugador),
-				(float) (0.5 * anchoJugador), (float) (0.5 * altoJugador));
+		Rectangle rJugador = new Rectangle((float) (posicionJugador.x + (0.25 * anchoJugador)), (float) (posicionJugador.y + (0.25 * altoJugador)),
+				(float) (anchoJugador * 0.5), (float) (altoJugador * 0.5));
 		Rectangle rNPC;
 		//Ahora recorremos el array de NPC, para cada uno generamos su rectángulo de contacto
 		for (Enemy enemy : enemies) {
 			rNPC = new Rectangle((float) (enemy.getPosition().x + 0.1 * anchoJugador), (float) (enemy.getPosition().y + 0.1 * altoJugador),
-					(float) (0.8 * anchoJugador), (float) (0.8 * altoJugador));
+					(float) (0.65 * anchoJugador), (float) (0.65 * altoJugador));
 			//Si hay colision
 			if (rJugador.overlaps(rNPC)) {
 				//Código de fin de partida
-				System.out.println("Fin de la partida");
+				float posicionMusica = musicaJuego.getPosition();
+				musicaJuego.pause();
+				//reproducimos el sonido "pillado"
+				pillado.play();
+				try {
+					Thread.sleep(800);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
+
+				--nVidas;
+
+				if (nVidas == 0) {
+					fracaso.play();
+					try {
+						Thread.sleep(2300);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
+
+					restartGame();
+				}
+
+				musicaJuego.setPosition(posicionMusica);
+				//reanudamos la musica del juego
+				musicaJuego.play();
 				posicionJugador.set(posicionaMapa(celdaInicial));
 				return; //Acabamos el bucle si hay una sola colisión
 			}
@@ -406,12 +506,34 @@ public class TheGame extends ApplicationAdapter implements InputProcessor {
 
 	//Metodo que detecta si hay un obstaculo en una determinada posicion
 	private boolean obstaculo(Vector2 posicion) {
-		int limIzq = (int) ((posicion.x + 0.25 * anchoJugador) / anchoCelda);
-		int limDrcha = (int) ((posicion.x + 0.75 * anchoJugador) / anchoCelda);
-		int limSup = (int) ((posicion.y + 0.25 * altoJugador) / altoCelda);
+		int limIzq = (int) ((posicion.x + 0.7 * anchoJugador) / anchoCelda);
+		int limDrcha = (int) ((posicion.x + 0.15 * anchoJugador) / anchoCelda);
+		int limSup = (int) ((posicion.y + 0.05 * altoJugador) / altoCelda);
 		int limInf = (int) ((posicion.y) / altoCelda);
 
 		return obstaculo[limIzq][limInf] || obstaculo[limDrcha][limSup];
+	}
+
+	private void restartGame() {
+		cuentaTesoros = 0;
+		nVidas = 3;
+
+		posicionJugador.set(posicionaMapa(celdaInicial));
+
+		capaTesoros = (TiledMapTileLayer) mapa.getLayers().get(1);
+
+		//Creamos un array bidimensional de booleanos para obstáculos y tesoros
+		tesoro = new boolean[anchoTiles][altoTiles];
+
+		//Rellenamos los valores recorriendo el mapa
+		for (int x = 0; x < anchoTiles; x++) {
+			for (int y = 0; y < altoTiles; y++) {
+				//rellenamos el array bidimensional de los tesoros
+				tesoro[x][y] = (capaTesoros.getCell(x, y) != null);
+				if (tesoro[x][y])
+					capaTesoros.getCell(x, y).setTile(tileTesoro);
+			}
+		}
 	}
 
 	//Método que convierte la posición del jugador en la celda en la que está

@@ -10,19 +10,20 @@ import com.badlogic.gdx.math.Vector2;
 public class Enemy {
 
     public static int amount = 5;
-    public static float speed = 1f;
     public static float animationDuration = 0.15f;
 
     private Texture img;
 
     public float stateTime = 0f;
 
-    private Animation top;
-    private Animation right;
-    private Animation down;
-    private Animation left;
+    public float speed = 1f;
 
-    private Animation active = null;
+    private Animation<TextureRegion> top;
+    private Animation<TextureRegion> right;
+    private Animation<TextureRegion> down;
+    private Animation<TextureRegion> left;
+
+    private Animation<TextureRegion> active = null;
 
     private Vector2 source;
     private Vector2 destination;
@@ -135,6 +136,14 @@ public class Enemy {
         this.stateTime = stateTime;
     }
 
+    public float getSpeed() {
+        return speed;
+    }
+
+    public void setSpeed(float speed) {
+        this.speed = speed;
+    }
+
     public Animation getTop() {
         return top;
     }
@@ -167,7 +176,7 @@ public class Enemy {
         this.left = left;
     }
 
-    public Animation getActive() {
+    public Animation<TextureRegion> getActive() {
         return active;
     }
 
