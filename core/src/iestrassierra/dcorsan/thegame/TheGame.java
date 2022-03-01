@@ -230,7 +230,7 @@ public class TheGame extends ApplicationAdapter implements InputProcessor {
 		enemies[2] = new Enemy(
 				new Texture(Gdx.files.internal("characters/enemy/enemy_19.png")),
 				posicionaMapa(new Vector2(9,2)),
-				posicionaMapa(new Vector2(9,6))
+				posicionaMapa(new Vector2(9,5))
 		);
 		enemies[3] = new Enemy(
 				new Texture(Gdx.files.internal("characters/enemy/dog_01-2r.png")),
