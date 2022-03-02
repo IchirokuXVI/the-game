@@ -247,7 +247,7 @@ public class TheGame extends ApplicationAdapter implements InputProcessor {
 		//Inicializamos la musica de fondo del juego
 		musicaJuego = Gdx.audio.newMusic(Gdx.files.internal("sound/background.mp3"));
 		musicaJuego.setLooping(true);
-		musicaJuego.setVolume(0.6f);
+		musicaJuego.setVolume(0.5f);
 
 		//Inicializamos los sonidos
 		tesoroEncontrado = Gdx.audio.newSound(Gdx.files.internal("sound/pickup.mp3"));
@@ -414,7 +414,7 @@ public class TheGame extends ApplicationAdapter implements InputProcessor {
 			stateTime += Gdx.graphics.getDeltaTime();
 			cycle = (int) (stateTime / 0.2f);
 			if (cycle != cycle_ant)
-				pasos.play(0.4f);
+				pasos.play(1.1f);
 			cycle_ant = cycle;
 		}
 
@@ -428,7 +428,7 @@ public class TheGame extends ApplicationAdapter implements InputProcessor {
 
 		//Deteccion de fin del mapa
 		if (celdaActual(posicionJugador).epsilonEquals(celdaFinal)) {
-			exito.play();
+			exito.play(0.5f);
 			try {
 				Thread.sleep(1000);
 			} catch (InterruptedException e) {
@@ -454,7 +454,7 @@ public class TheGame extends ApplicationAdapter implements InputProcessor {
 				tesoro[limDrcha][limSup] = false;
 			}
 			celda.setTile(null);
-			tesoroEncontrado.play();
+			tesoroEncontrado.play(0.5f);
 			cuentaTesoros++;
 		}
 	}
@@ -475,7 +475,7 @@ public class TheGame extends ApplicationAdapter implements InputProcessor {
 				float posicionMusica = musicaJuego.getPosition();
 				musicaJuego.pause();
 				//reproducimos el sonido "pillado"
-				pillado.play();
+				pillado.play(0.6f);
 				try {
 					Thread.sleep(800);
 				} catch (InterruptedException e) {
@@ -485,7 +485,7 @@ public class TheGame extends ApplicationAdapter implements InputProcessor {
 				--nVidas;
 
 				if (nVidas == 0) {
-					fracaso.play();
+					fracaso.play(0.8f);
 					try {
 						Thread.sleep(2300);
 					} catch (InterruptedException e) {
