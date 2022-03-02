@@ -247,7 +247,7 @@ public class TheGame extends ApplicationAdapter implements InputProcessor {
 		//Inicializamos la musica de fondo del juego
 		musicaJuego = Gdx.audio.newMusic(Gdx.files.internal("sound/background.mp3"));
 		musicaJuego.setLooping(true);
-		musicaJuego.setVolume(0.4f);
+		musicaJuego.setVolume(0.6f);
 
 		//Inicializamos los sonidos
 		tesoroEncontrado = Gdx.audio.newSound(Gdx.files.internal("sound/pickup.mp3"));
